@@ -10,11 +10,13 @@ from requests.auth import HTTPBasicAuth
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
 
-with open('config.json') as f:
-  config = json.load(f)
+try:
+    f = open('config.json')
+except OSError:
+    raise SystemExit("can't open 'config.json'")
 
-
-print(config)
+with f:
+    config = json.load(f)
 
 # get number from command line
 if len(sys.argv) != 2:
