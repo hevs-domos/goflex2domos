@@ -34,8 +34,9 @@ print("uuid:{} name :{}".format(uuid,name))
 # FIXME for each series
 ## FIXME get all values
 ## FIXME format (and remove .nodes .objects .attributes and replace goflex-dc-nnn by the UUID)
-## split in smaller part
-### for each parts, post into new db
+## FIXME replace changed names (smartmeters...)
+## FIXME split in smaller part
+### FIXME for each parts, post into new db
 
 
 # today's questions
