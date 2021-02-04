@@ -1,0 +1,19 @@
+{
+  "in": {
+    "url": "http://localhost:8086",
+    "db": "cloudio",
+    "user": "fixme",
+    "password": "fixme"
+  },
+  "out": {
+    "url": "http://localhost:8086",
+    "db": "cloudio",
+    "user": "fixme",
+    "password": "fixme"
+  },
+  "api": {
+    "url": "http://localhost:80",
+    "user": "fixme",
+    "password": "fixme"
+  }
+}
