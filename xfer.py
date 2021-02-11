@@ -45,10 +45,12 @@ def get_series(config):
 
 def push_data(config, l):
     params = {
-        'db' : config["in"]["db"]
+        'db' : config["out"]["db"]
     }
 
-    r = requests.post(config["out"]["url"]+"/write", auth=(config["out"]["user"], config["out"]["password"]), params=params, data="\n".join(l))
+    data = "\n".join(l)
+
+    r = requests.post(config["out"]["url"]+"/write", auth=(config["out"]["user"], config["out"]["password"]), params=params, data=data)
     r.raise_for_status()
 
 def get_values(config, measurement):
@@ -58,7 +60,7 @@ def get_values(config, measurement):
 
     params = {
         'db' : config["in"]["db"],
-        'q' : "select * from \"{}\" limit 10".format(measurement)
+        'q' : "select * from \"{}\"".format(measurement)
     }
 
     r = requests.get(config["in"]["url"]+"/query", headers=headers, auth=(config["in"]["user"], config["in"]["password"]), params=params)
@@ -75,18 +77,23 @@ def fixes_02(l):
     l=l.replace(".attributes.", ".")
 
     # smartmeter renaming
-    l=l.replace(".SmartMeterBilling.", ".SmartMeter.billing")
-    l=l.replace(".SmartMeterEnergy.", ".SmartMeter.energy")
-    l=l.replace(".SmartMeterTechnical.", ".SmartMeter.technical")
+    l=l.replace(".SmartMeterBilling.", ".SmartMeter.billing.")
+    l=l.replace(".SmartMeterEnergy.", ".SmartMeter.energy.")
+    l=l.replace(".SmartMeterTechnical.", ".SmartMeter.technical.")
+
+    if ".SmartMeter." in l:
+        l=l.replace(".datapoint","")
     return l
 
 def line_convert(l):
     x=l.split(",")
     name=serie_out
     time=x[2]
-    type=x[3]
-    constraint=x[4]
+    constraint=x[3]
+    type=x[4]
     value=x[5]
+    if type == "String" and value.isnumeric() == False:
+        value='"' + value + '"'
     return "{},constraint={},type={} value={} {}".format(name,constraint,type,value,time)
 
 try:
@@ -115,16 +122,18 @@ name_old = friendlyName.replace('domos', 'goflex')
 series=get_series(config)
 series = list(filter(lambda t : t.startswith(name_old), series))
 series = list(filter(lambda t :  "constraint" in t, series))
-series = series[:2]
+
 for serie in series:
     m = serie.split(",")[0]
     serie_out = fixes_02(m)
-    chunk_size = 3
+    chunk_size = 100*1000
     out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-    print("serie:{} chuncks:{}".format(serie_out,len(out)), end="")
+    print("serie:{} chuncks: {} ".format(serie_out,len(out)), end="")
+    sys.stdout.flush()
     for l in out:
         push_data(config, l)
         print("*", end="")
+        sys.stdout.flush()
     print()
 
 # today's questions
