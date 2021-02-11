@@ -128,7 +128,7 @@ for serie in series:
     serie_out = fixes_02(m)
     chunk_size = 100*1000
     out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-    print("serie:{} chuncks: {} ".format(serie_out,len(out)), end="")
+    print("{} chuncks: {} ".format(serie_out[serie_out.find(".")+1:],len(out)), end="")
     sys.stdout.flush()
     for l in out:
         push_data(config, l)
