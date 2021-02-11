@@ -3,12 +3,91 @@
 from __future__ import print_function
 
 import json
+import urllib
 import sys
 import requests
+import os
 from requests.auth import HTTPBasicAuth
+from itertools import islice
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+def chunk(it, size):
+    it = iter(it)
+    return iter(lambda: tuple(islice(it, size)), ())
+
+def get_series(config):
+    if os.path.exists(".cache/cache.txt") != True:
+        # FIXME list all series, which looks like measurement,parameter=...
+        headers = {
+            'Accept': 'application/csv',
+        }
+
+        params = {
+            'db' : config["in"]["db"],
+            'q' : "show series"
+        }
+
+        r = requests.get(config["in"]["url"]+"/query", headers=headers, auth=(config["in"]["user"], config["in"]["password"]), params=params)
+        r.raise_for_status()
+        file = open(".cache/cache.txt", "w")
+        file.write(r.text)
+        file.close()
+        ret = r.text.splitlines()
+    else:
+        file = open(".cache/cache.txt", "r")
+        ret = file.read().splitlines()
+        file.close()
+    ret = list(map(lambda x : x.replace(",,", ""), ret))
+    ret = list(map(lambda x : x.replace("\"", ""), ret))
+    return ret
+
+def push_data(config, l):
+    params = {
+        'db' : config["in"]["db"]
+    }
+
+    r = requests.post(config["out"]["url"]+"/write", auth=(config["out"]["user"], config["out"]["password"]), params=params, data="\n".join(l))
+    r.raise_for_status()
+
+def get_values(config, measurement):
+    headers = {
+        'Accept': 'application/csv',
+    }
+
+    params = {
+        'db' : config["in"]["db"],
+        'q' : "select * from \"{}\" limit 10".format(measurement)
+    }
+
+    r = requests.get(config["in"]["url"]+"/query", headers=headers, auth=(config["in"]["user"], config["in"]["password"]), params=params)
+    r.raise_for_status()
+    return r.text.splitlines()[1:]
+
+def fixes_02(l):
+    # goflex -> domos
+    l=l.replace(name_old, uuid)
+
+    # cloudio 0.1 -> 0.2
+    l=l.replace(".nodes.", ".")
+    l=l.replace(".objects.", ".")
+    l=l.replace(".attributes.", ".")
+
+    # smartmeter renaming
+    l=l.replace(".SmartMeterBilling.", ".SmartMeter.billing")
+    l=l.replace(".SmartMeterEnergy.", ".SmartMeter.energy")
+    l=l.replace(".SmartMeterTechnical.", ".SmartMeter.technical")
+    return l
+
+def line_convert(l):
+    x=l.split(",")
+    name=serie_out
+    time=x[2]
+    type=x[3]
+    constraint=x[4]
+    value=x[5]
+    return "{},constraint={},type={} value={} {}".format(name,constraint,type,value,time)
 
 try:
     f = open('config.json')
@@ -22,22 +101,31 @@ with f:
 if len(sys.argv) != 2:
     raise SystemExit('first arg MUST be house UUID.')
 
+if os.path.exists(".cache") != True:
+    os.mkdir(".cache")
+
 uuid = sys.argv[1]
 r = requests.get(config["api"]["url"]+"/api/v1/endpoints/{}/friendlyName".format(uuid), auth=(config["api"]["user"], config["api"]["password"]))
 r.raise_for_status()
-name = r.text
-print("uuid:{} name :{}".format(uuid,name))
+friendlyName = r.text
+print("uuid:{} name :{}".format(uuid,friendlyName))
 
-# FIMXE get the friendly name from API
+name_old = friendlyName.replace('domos', 'goflex')
 
-# FIXME list all series, which looks like measurement,parameter=...
-# FIXME for each series
-## FIXME get all values
-## FIXME format (and remove .nodes .objects .attributes and replace goflex-dc-nnn by the UUID)
-## FIXME replace changed names (smartmeters...)
-## FIXME split in smaller part
-### FIXME for each parts, post into new db
-
+series=get_series(config)
+series = list(filter(lambda t : t.startswith(name_old), series))
+series = list(filter(lambda t :  "constraint" in t, series))
+series = series[:2]
+for serie in series:
+    m = serie.split(",")[0]
+    serie_out = fixes_02(m)
+    chunk_size = 3
+    out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
+    print("serie:{} chuncks:{}".format(serie_out,len(out)), end="")
+    for l in out:
+        push_data(config, l)
+        print("*", end="")
+    print()
 
 # today's questions
 ## API est-ce qu'on a une fonction pour passer du pretty name au UUID
