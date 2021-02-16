@@ -80,6 +80,8 @@ def fixes_02(l):
     l=l.replace(".SmartMeterBilling.", ".SmartMeter.billing.")
     l=l.replace(".SmartMeterEnergy.", ".SmartMeter.energy.")
     l=l.replace(".SmartMeterTechnical.", ".SmartMeter.technical.")
+    l=l.replace(".relay1State.datapoint", ".relay1.state")
+    l=l.replace(".relay2State.datapoint", ".relay2.state")
 
     if ".SmartMeter." in l:
         l=l.replace(".datapoint","")
@@ -119,7 +121,7 @@ print("uuid:{} name :{}".format(uuid,friendlyName))
 
 name_old = friendlyName.replace('domos', 'goflex')
 
-series=get_series(config)
+series = get_series(config)
 series = list(filter(lambda t : t.startswith(name_old), series))
 series = list(filter(lambda t :  "constraint" in t, series))
 
@@ -127,8 +129,10 @@ for serie in series:
     m = serie.split(",")[0]
     serie_out = fixes_02(m)
     chunk_size = 100*1000
+    print(serie_out[serie_out.find(".")+1:], end="")
+    sys.stdout.flush()
     out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-    print("{} chuncks: {} ".format(serie_out[serie_out.find(".")+1:],len(out)), end="")
+    print("chuncks: {} ".format(len(out)), end="")
     sys.stdout.flush()
     for l in out:
         push_data(config, l)
