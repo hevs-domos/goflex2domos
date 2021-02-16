@@ -132,7 +132,7 @@ for serie in series:
     print(serie_out[serie_out.find(".")+1:], end="")
     sys.stdout.flush()
     out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-    print("chuncks: {} ".format(len(out)), end="")
+    print(" chuncks: {} ".format(len(out)), end="")
     sys.stdout.flush()
     for l in out:
         push_data(config, l)
