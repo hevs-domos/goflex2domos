@@ -108,15 +108,19 @@ with f:
 
 # get number from command line
 if len(sys.argv) != 2:
-    raise SystemExit('first arg MUST be house UUID.')
+    raise SystemExit('first arg MUST be house NNN.')
 
 if os.path.exists(".cache") != True:
     os.mkdir(".cache")
 
-uuid = sys.argv[1]
-r = requests.get(config["api"]["url"]+"/api/v1/endpoints/{}/friendlyName".format(uuid), auth=(config["api"]["user"], config["api"]["password"]))
+nr = sys.argv[1]
+friendlyName = "domos-dc-"+nr
+params = {'friendlyName': friendlyName}
+r = requests.get(config["api"]["url"]+"/api/v1/endpoints", auth=(config["api"]["user"], config["api"]["password"]), params=params)
 r.raise_for_status()
-friendlyName = r.text
+if (len(r.json()) < 1):
+    raise SystemExit('friendlyName not found : '+friendlyName)
+uuid = r.json()[0]['uuid']
 print("uuid:{} name :{}".format(uuid,friendlyName))
 
 name_old = friendlyName.replace('domos', 'goflex')
