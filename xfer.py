@@ -107,43 +107,39 @@ with f:
     config = json.load(f)
 
 # get number from command line
-if len(sys.argv) != 2:
+if len(sys.argv) < 2:
     raise SystemExit('first arg MUST be house NNN.')
 
 if os.path.exists(".cache") != True:
     os.mkdir(".cache")
 
-nr = sys.argv[1]
-friendlyName = "domos-dc-"+nr
-params = {'friendlyName': friendlyName}
-r = requests.get(config["api"]["url"]+"/api/v1/endpoints", auth=(config["api"]["user"], config["api"]["password"]), params=params)
-r.raise_for_status()
-if (len(r.json()) < 1):
-    raise SystemExit('friendlyName not found : '+friendlyName)
-uuid = r.json()[0]['uuid']
-print("uuid:{} name :{}".format(uuid,friendlyName))
+for nr in sys.argv[1:]:
+    friendlyName = "domos-dc-"+nr
+    params = {'friendlyName': friendlyName}
+    r = requests.get(config["api"]["url"]+"/api/v1/endpoints", auth=(config["api"]["user"], config["api"]["password"]), params=params)
+    r.raise_for_status()
+    if (len(r.json()) < 1):
+        raise SystemExit('friendlyName not found : '+friendlyName)
+    uuid = r.json()[0]['uuid']
+    print("uuid:{} name :{}".format(uuid,friendlyName))
 
-name_old = friendlyName.replace('domos', 'goflex')
+    name_old = friendlyName.replace('domos', 'goflex')
 
-series = get_series(config)
-series = list(filter(lambda t : t.startswith(name_old), series))
-series = list(filter(lambda t :  "constraint" in t, series))
+    series = get_series(config)
+    series = list(filter(lambda t : t.startswith(name_old), series))
+    series = list(filter(lambda t :  "constraint" in t, series))
 
-for serie in series:
-    m = serie.split(",")[0]
-    serie_out = fixes_02(m)
-    chunk_size = 100*1000
-    print(serie_out[serie_out.find(".")+1:], end="")
-    sys.stdout.flush()
-    out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-    print(" chuncks: {} ".format(len(out)), end="")
-    sys.stdout.flush()
-    for l in out:
-        push_data(config, l)
-        print("*", end="")
+    for serie in series:
+        m = serie.split(",")[0]
+        serie_out = fixes_02(m)
+        chunk_size = 100*1000
+        print(serie_out[serie_out.find(".")+1:], end="")
         sys.stdout.flush()
-    print()
-
-# today's questions
-## API est-ce qu'on a une fonction pour passer du pretty name au UUID
-##
+        out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
+        print(" chuncks: {} ".format(len(out)), end="")
+        sys.stdout.flush()
+        for l in out:
+            push_data(config, l)
+            print("*", end="")
+            sys.stdout.flush()
+        print()
