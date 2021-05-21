@@ -80,8 +80,8 @@ def fixes_02(l):
     l=l.replace(".SmartMeterBilling.", ".SmartMeter.billing.")
     l=l.replace(".SmartMeterEnergy.", ".SmartMeter.energy.")
     l=l.replace(".SmartMeterTechnical.", ".SmartMeter.technical.")
-    l=l.replace(".relay1State.datapoint", ".relay1.state")
-    l=l.replace(".relay2State.datapoint", ".relay2.state")
+    l=l.replace(".gateway.relay1State.datapoint", ".Relay-1.relay.state")
+    l=l.replace(".gateway.relay2State.datapoint", ".Relay-2.relay.state")
 
     if ".SmartMeter." in l:
         l=l.replace(".datapoint","")
