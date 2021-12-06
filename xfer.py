@@ -53,19 +53,33 @@ def push_data(config, l):
     r = requests.post(config["out"]["url"]+"/write", auth=(config["out"]["user"], config["out"]["password"]), params=params, data=data)
     r.raise_for_status()
 
-def get_values(config, measurement):
+def get_values(config, measurement, limit, offset):
     headers = {
         'Accept': 'application/csv',
     }
 
     params = {
         'db' : config["in"]["db"],
-        'q' : "select * from \"{}\"".format(measurement)
+        'q' : "select * from \"{}\" LIMIT {} OFFSET {}".format(measurement, limit, offset)
     }
 
     r = requests.get(config["in"]["url"]+"/query", headers=headers, auth=(config["in"]["user"], config["in"]["password"]), params=params)
     r.raise_for_status()
     return r.text.splitlines()[1:]
+
+def get_count(config, measurement):
+    headers = {
+        'Accept': 'application/csv',
+    }
+
+    params = {
+        'db' : config["in"]["db"],
+        'q' : "select count(*) from \"{}\"".format(measurement)
+    }
+
+    r = requests.get(config["in"]["url"]+"/query", headers=headers, auth=(config["in"]["user"], config["in"]["password"]), params=params)
+    r.raise_for_status()
+    return int(r.text.splitlines()[1:][0].split(",")[3])
 
 def fixes_02(l):
     # goflex -> domos
@@ -135,11 +149,13 @@ for nr in sys.argv[1:]:
         chunk_size = 100*1000
         print(serie_out[serie_out.find(".")+1:], end="")
         sys.stdout.flush()
-        out = list(chunk(map(line_convert, get_values(config, m)),chunk_size))
-        print(" chuncks: {} ".format(len(out)), end="")
+        count=get_count(config, m)
+        chunks = ((count+chunk_size-1)//chunk_size)
+        print(f" chuncks: {chunks} ", end="")
         sys.stdout.flush()
-        for l in out:
-            push_data(config, l)
+        for i in range(chunks):
+            tmp = map(line_convert, get_values(config, m, chunk_size, i*chunk_size))
+            push_data(config, tmp)
             print("*", end="")
             sys.stdout.flush()
         print()
